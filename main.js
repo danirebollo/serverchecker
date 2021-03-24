@@ -126,7 +126,7 @@ async function getredirectstatus(request) {
 }
 
 async function setredirectstatus(request, redirectstatus) {
-    const urlvps3 = "https://api.cloudflare.com/client/v4/zones/" + ZONEID + "/pagerules/"+REDIRECTIONID
+    const urlvps3 = "https://api.cloudflare.com/client/v4/zones/" + ZONEID + "/pagerules/" + REDIRECTIONID
 
     if (redirectstatus == false || redirectstatus == null)
         redirectstatus = "disabled"
@@ -139,7 +139,7 @@ async function setredirectstatus(request, redirectstatus) {
             \"target\": \"url\",\
             \"constraint\": {\
                 \"operator\": \"matches\",\
-                \"value\": \""+HOSTNAMEWOSCH+"/\"\
+                \"value\": \""+ HOSTNAMEWOSCH + "/\"\
             }\
         }\
     ],\
@@ -147,7 +147,7 @@ async function setredirectstatus(request, redirectstatus) {
         {\
             \"id\": \"forwarding_url\",\
             \"value\": {\
-                \"url\": \""+REDIRECTIONURL+"\",\
+                \"url\": \""+ REDIRECTIONURL + "\",\
                 \"status_code\": 302\
             }\
         }\
@@ -213,7 +213,7 @@ async function handleRequest(request) {
     var pingbk2status = await myping(SERVERBKADDRESS)
     var pingredirectstatus = await myping(REDIRECTIONURL)
 
-    
+
 
     var currentRedirectStatus = await getredirectstatus(request)
     var mainDNScontent = await getDNS(request, HOSTNAMEWOSCH, HOSTNAMEWOSCH, "CNAME")
@@ -246,7 +246,7 @@ async function handleRequest(request) {
 }\
 </style>\
     <title>Serverchecker</title>\
-    <link rel=\"icon\" type=\"image/png\" href=\"https://www.google.com/favicon.ico\"/>\
+    <link rel=\"icon\" type=\"image/png\" href=\"https://dash.cloudflare.com/favicon.ico\"/>\
     </head>\
     <body>\
     <h1>Serverchecker</h1>";
@@ -310,19 +310,26 @@ async function handleRequest(request) {
     }
     else if ((mainDNScontent != VPSADDRESSWOSCH) && pingvpsstatus)  //pinghoststatus
     {
-            //set DNS to VPSADDRESS
-            await setDNS(request, VPSADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME")
+        //set DNS to VPSADDRESS
+        await setDNS(request, VPSADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME")
 
-            //disable redirect
-            await setredirectstatus(request, 0)
+        //disable redirect
+        await setredirectstatus(request, 0)
 
-            //send telegram notification to server bot "RESTORING DNS"
+        //send telegram notification to server bot "RESTORING DNS"
 
-            //verbose
-            successmsg += "Restoring server. <br>Setting DNS to VPSADDRESS<br>-disable redirect<br>-send telegram notification to server bot \"RESTORING DNS\""
+        //verbose
+        successmsg += "Restoring server. <br>Setting DNS to VPSADDRESS<br>-disable redirect<br>-send telegram notification to server bot \"RESTORING DNS\""
     }
     else if (SERVERBKADDRESSWOSCH != "" && pingbk2status) {
-        warningmsg += "Service partially degraded."
+        warningmsg += "Service partially degraded.<br>"
+
+        if (currentRedirectStatus) {
+            warningmsg += "Disabling redirect<br>"
+            //disable redirect
+            await setredirectstatus(request, 0)
+        }
+
 
         if (mainDNScontent != SERVERBKADDRESSWOSCH) {
             //set DNS to SERVERBKADDRESS
@@ -331,10 +338,10 @@ async function handleRequest(request) {
             //send telegram notification to server bot "VPS DOWN, SETTING BK2"
 
             //verbose
-            warningmsg += "<br>setting DNS to SERVERBKADDRESS<br>sending telegram notification to server bot \"VPS DOWN: SETTING BK2\""
+            warningmsg += "setting DNS to SERVERBKADDRESS<br>sending telegram notification to server bot \"VPS DOWN: SETTING BK2\"<br>"
         }
         else
-            alertmsg += "Setted DNS to SERVERBKADDRESS"
+            warningmsg += "Setted DNS to SERVERBKADDRESS<br>"
     }
     else {
         alertmsg += "Service totally degraded. "
@@ -368,9 +375,7 @@ async function handleRequest(request) {
     //TODO 
     //check specific code instead simple PING
     //send telegram notification to server bot
-    //check if enviroment variables are empty.. show message...
 
-    
     resp += "</body>\
             </html>";
 
