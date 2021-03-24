@@ -1,5 +1,5 @@
 # serverchecker
-Server status tracker using free Cloudflare Workers service
+Server status tracker using free Cloudflare Workers service: status.danirebollo.es
 
 The goal of this project is to have an high availability web service with cheap resources like OVH VPS, free Cloudflare plan and home server or redirect page like personal github profile (if web is not available, better to be redirected than get DNS error...). 
 
@@ -60,7 +60,7 @@ To get this key, go to cloudflare "profile/api tokens" and get "global API key" 
 
 5- Create worker with the js code in src/main.js
 
-6- Create route pointing this worker with desired subdomain (ej: "status.mydomain.com")
+6- Create route pointing this worker with desired subdomain (ej: "status.danirebollo.es")
 
 7- Disable "Route Workers.dev" if you don't need this additional domain (using "status.subdomain.com" you don't need other hostname)
 
@@ -77,7 +77,7 @@ XAUTHKEY                // example: 8fcd5a0ae22d4fff07f3794d7ca7dc3ac
 ZONEID                  // example: f79ddda8dd00f322a7dca89b8c869a9c
 ```
 
-9-  Add cron activator: 
+9-  Add cron activator (cloudflare/workers/cron activator): 
 */30 * * * *
 
 

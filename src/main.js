@@ -1,7 +1,6 @@
 //var HOSTNAME = // SET ENV VARIABLE
 //var VPSADDRESSWOSCH = // SET ENV VARIABLE
 //var SERVERBKADDRESSWOSCH = // SET ENV VARIABLE
-//var PINGTESTADDRESS = // SET ENV VARIABLE
 //var MAINDNSRECORDID = // SET ENV VARIABLE
 //var ZONEID = // SET ENV VARIABLE
 //var XAUTHEMAIL = // SET ENV VARIABLE
@@ -206,7 +205,6 @@ async function myping(url) {
 *
 */
 async function handleRequest(request) {
-    var pingteststatus = "true" //await myping(PINGTESTADDRESS)
     var pingvpsstatus = await myping(VPSADDRESS)
     var pinghoststatus = await myping(HOSTNAME)
     var pingbk2status = await myping(SERVERBKADDRESS)
@@ -272,7 +270,7 @@ async function handleRequest(request) {
   </tr>\
   <tr>\
     <td>Main server ping</td>\
-    <td>"+ mainDNScontent + "</td>\
+    <td>"+ VPSADDRESS + "</td>\
     <td>\
     "+ printcolorcell(pingvpsstatus) + "\
     </td>\
@@ -385,3 +383,4 @@ async function handleRequest(request) {
     })
 
 }
+
