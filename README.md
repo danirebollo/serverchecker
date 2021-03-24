@@ -14,7 +14,7 @@ example: bk, 12.11.13.15 (bk.danirebollo.es points to 12.11.13.15)
 
 ## get cloudflare variables
 
-0- get your api variables using this postman collection: https://support.cloudflare.com/hc/en-us/articles/115002323852-Using-Cloudflare-API-with-Postman-Collections 
+Get your api variables using this postman collection: https://support.cloudflare.com/hc/en-us/articles/115002323852-Using-Cloudflare-API-with-Postman-Collections 
 ### HOSTNAMEWOSCH
 This is your main hostname
 example: danirebollo.es
@@ -24,7 +24,7 @@ This is the recordID of your main DNS entry. You can check it with postman colle
 
 example: 4dc31145962338c75db3b8151cfc036d
 
-## VPSADDRESSWOSCH
+### VPSADDRESSWOSCH
 This is the vps address (not IP) of out main server.
 
 Example: vps-aaaaaaaa.vps.ovh.net
