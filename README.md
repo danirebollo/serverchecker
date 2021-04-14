@@ -5,7 +5,12 @@ The goal of this project is to have an high availability web service with cheap 
 
 # Setup
 ## create telegram bot
-To Be Done.
+Use botfather to create telegram bot.
+You need BOT_API_KEY (created in BotFather) and CHAT_ID to create TELEGRAM_BOTID and TELEGRAM_CHATID environmental variables.
+
+https://xabaras.medium.com/sending-a-message-to-a-telegram-channel-the-easy-way-eb0a0b32968
+
+https://sean-bradley.medium.com/get-telegram-chat-id-80b575520659
 
 ## create backup server A type DNS entry 
 Create backup server subdomain pointing to different machine.
@@ -48,6 +53,10 @@ This is the email used for cloudflare login.
 
 ### XAUTHKEY
 To get this key, go to cloudflare "profile/api tokens" and get "global API key" or "API key token" with the rights to edit the used DNS entries and redirection.
+
+### TELEGRAM_BOTID
+
+### TELEGRAM_CHATID
 ## cloudflare setup
 
 1- Go to https://dash.cloudflare.com/

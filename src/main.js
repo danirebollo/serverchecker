@@ -7,6 +7,8 @@
 //var XAUTHKEY = // SET ENV VARIABLE
 //var REDIRECTIONID= // SET ENV VARIABLE
 //var REDIRECTIONURL = // SET ENV VARIABLE
+//var TELEGRAM_BOTID = // SET ENV VARIABLE
+//var TELEGRAM_CHATID = // SET ENV VARIABLE
 
 var HOSTNAME = "https://" + HOSTNAMEWOSCH
 var VPSADDRESS = "https://" + VPSADDRESSWOSCH
@@ -22,6 +24,33 @@ function printcolorcell(value) {
     else
         return "<div class=\"alert\" \"></div>"
 }
+
+async function sendTelegramMessage(request, mymessage) {
+    const urlvps3 = "https://api.telegram.org/bot"+TELEGRAM_BOTID+"/sendMessage?chat_id="+TELEGRAM_CHATID+"&text="+encodeURI(mymessage)
+    console.log(urlvps3)
+    
+    var pingvps3 = false
+    let requestvps3 = new Request(urlvps3, {
+        headers: request.headers,
+        method: "GET"
+    })
+    requestvps3.headers.set("Host", "api.telegram.org")
+    //requestvps3.headers.set("X-Auth-Email", XAUTHEMAIL)
+    //requestvps3.headers.set("X-Auth-Key", XAUTHKEY)
+
+    originalResponse = await fetch(urlvps3, requestvps3)
+        .then((resp) => resp.json())
+        .then(function (data) {
+            return data
+        })
+        .catch(function (error) {
+            return "error"
+        });
+    var status = "not found"
+
+    return status
+}
+
 async function setDNS(request, destiny, name, type) {
     const urlvps3 = "https://api.cloudflare.com/client/v4/zones/" + ZONEID + "/dns_records/" + MAINDNSRECORDID
 
@@ -301,6 +330,7 @@ async function handleRequest(request) {
     alertmsg = ""
     warningmsg = ""
     successmsg = ""
+
     if ((mainDNScontent == VPSADDRESSWOSCH) && pingvpsstatus)  //pinghoststatus
     {
         successmsg += "Server working"
@@ -314,7 +344,7 @@ async function handleRequest(request) {
         await setredirectstatus(request, 0)
 
         //send telegram notification to server bot "RESTORING DNS"
-
+        await sendTelegramMessage(request, "RESTORING DNS")
         //verbose
         successmsg += "Restoring server. <br>Setting DNS to VPSADDRESS<br>-disable redirect<br>-send telegram notification to server bot \"RESTORING DNS\""
     }
@@ -325,6 +355,7 @@ async function handleRequest(request) {
             warningmsg += "Disabling redirect<br>"
             //disable redirect
             await setredirectstatus(request, 0)
+            await sendTelegramMessage(request, "BK2 is UP. Disabling redirect")
         }
 
 
@@ -333,7 +364,7 @@ async function handleRequest(request) {
             await setDNS(request, SERVERBKADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME")
 
             //send telegram notification to server bot "VPS DOWN, SETTING BK2"
-
+            await sendTelegramMessage(request, "VPS DOWN, SETTING BK2")
             //verbose
             warningmsg += "setting DNS to SERVERBKADDRESS<br>sending telegram notification to server bot \"VPS DOWN: SETTING BK2\"<br>"
         }
@@ -347,7 +378,7 @@ async function handleRequest(request) {
             await setredirectstatus(request, 1)
 
             //send telegram notification to server bot "VPS & BK2 DOWN, SETTING REDIRECT"
-
+            await sendTelegramMessage(request, "VPS and BK2 DOWN, SETTING REDIRECT")
             //verbose
             alertmsg += "<br>Enabling redirection<br>sending telegram notification to server bot \"VPS & BK2 DOWN: SETTING REDIRECT\""
         }
