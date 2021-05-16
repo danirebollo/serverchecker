@@ -9,6 +9,8 @@
 //var REDIRECTIONURL = // SET ENV VARIABLE
 //var TELEGRAM_BOTID = // SET ENV VARIABLE
 //var TELEGRAM_CHATID = // SET ENV VARIABLE
+//var VPSENABLED = // SET ENV VARIABLE
+//var BACKUPDNSRECORDID = // SET ENV VARIABLE
 
 var HOSTNAME = "https://" + HOSTNAMEWOSCH
 var VPSADDRESS = "https://" + VPSADDRESSWOSCH
@@ -26,9 +28,9 @@ function printcolorcell(value) {
 }
 
 async function sendTelegramMessage(request, mymessage) {
-    const urlvps3 = "https://api.telegram.org/bot"+TELEGRAM_BOTID+"/sendMessage?chat_id="+TELEGRAM_CHATID+"&text="+encodeURI(mymessage)
+    const urlvps3 = "https://api.telegram.org/bot" + TELEGRAM_BOTID + "/sendMessage?chat_id=" + TELEGRAM_CHATID + "&text=" + encodeURI(mymessage)
     console.log(urlvps3)
-    
+
     var pingvps3 = false
     let requestvps3 = new Request(urlvps3, {
         headers: request.headers,
@@ -51,15 +53,17 @@ async function sendTelegramMessage(request, mymessage) {
     return status
 }
 
-async function setDNS(request, destiny, name, type) {
-    const urlvps3 = "https://api.cloudflare.com/client/v4/zones/" + ZONEID + "/dns_records/" + MAINDNSRECORDID
+async function setDNS(request, destiny, name, type, recordid, proxied) {
+    const urlvps3 = "https://api.cloudflare.com/client/v4/zones/" + ZONEID + "/dns_records/" + recordid
+    var proxied2 = ""
+    if (proxied == "true")
+        proxied2 = "\"proxied\": true\","
 
     var reqbody3 = "{\
     \"type\": \""+ type + "\",\
     \"name\": \""+ name + "\",\
     \"content\": \""+ destiny + "\",\
-    \"ttl\": 1,\
-    \"proxied\": true\
+    "+ proxied2 + "\"ttl\": 1\
 }"
 
     var pingvps3 = false
@@ -78,6 +82,7 @@ async function setDNS(request, destiny, name, type) {
     const responsevps3 = new Response()
     try {
         const originalResponse = await fetch(urlvps3, requestvps3)
+        console.log("CONSOLE: " + JSON.stringify(originalResponse))
         pingvps3 = true
     }
     catch (e) {
@@ -211,19 +216,27 @@ async function myping(url) {
     if (url == "" || url === null || url === "")
         return false
 
-    timeout = 1200
+    timeout = 5000
     return new Promise((reslove, reject) => {
         const urlRule = new RegExp('(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]');
         if (!urlRule.test(url)) reslove(false);  //reject('invalid url');
         try {
             fetch(url)
-                .then(() => reslove(true))
-                .catch(() => reslove(false));
+                .then(() => {
+                    console.log("## myping:: resolve true...")
+                    reslove(true)            
+                    })
+                .catch(() => {
+                    console.log("## myping:: resolve false...")
+                    reslove(false)
+                });
             setTimeout(() => {
+            console.log("## myping:: setTimeout...: "+timeout)
                 reslove(false);
             }, timeout);
         } catch (e) {
             //reject(e);
+            console.log("## myping:: Timeout catch...")
             reslove(false);
         }
     });
@@ -234,21 +247,77 @@ async function myping(url) {
 *
 */
 async function handleRequest(request) {
-    var pingvpsstatus = await myping(VPSADDRESS)
+    var pingvpsstatus = 0
+    if(VPSENABLED)
+    {
+       console.log("Ping vps...")
+        pingvpsstatus = await myping(VPSADDRESS) 
+    }
+    
+
+    console.log("Ping hostname...")
     var pinghoststatus = await myping(HOSTNAME)
-    var pingbk2status = await myping(SERVERBKADDRESS)
+    console.log("Ping serverbk...")
+    var pingbk2status = await myping(SERVERBKADDRESS+"/check/check.php")
+    console.log("Ping redirectionurl...")
     var pingredirectstatus = await myping(REDIRECTIONURL)
 
 
 
+    console.log("getting redirect status...")
     var currentRedirectStatus = await getredirectstatus(request)
+    console.log("getting hostname dns status...")
+
     var mainDNScontent = await getDNS(request, HOSTNAMEWOSCH, HOSTNAMEWOSCH, "CNAME")
+    
+    console.log("getting serverbk dns status...")
+    var backupDNScontent = await getDNS(request, HOSTNAMEWOSCH, SERVERBKADDRESSWOSCH, "A")
     var DNSisVPS = false
     if (mainDNScontent == VPSADDRESSWOSCH)
         DNSisVPS = true
 
+    var resp = ""
+    alertmsg = ""
+    warningmsg = ""
+    successmsg = ""
+    //await sendTelegramMessage(request, "INIT")
+    console.log("handling request...")
+    //GET request
+    const params = {}
+    const url = new URL(request.url)
+    const queryString = url.search.slice(1).split('&')
 
-    var resp = "<!DOCTYPE html>\
+    queryString.forEach(item => {
+        const kv = item.split('=')
+        if (kv[0]) params[kv[0]] = kv[1] || true
+    })
+
+    resp += "<div> " + JSON.stringify(params) + "</div>"
+
+    if (params.d1 === "asdfKkAQfW") {
+        resp += "<div> ##################################################### </div>"
+        resp += "<div> current backupdns content: " + backupDNScontent + "</div>"
+        resp += "<div> received ip: " + params.d2 + "</div>"
+        //received IP (DDNS) is= ddnsip    
+        //read backup DNS ip
+        if (backupDNScontent != params.d2)
+        //if backupdns==ddnsip
+        {
+            resp += "<div> updating DNS to: " + params.d2 + "</div>"
+            //nothing
+            //else
+            //update backup dns ip
+            await setDNS(request, params.d2, "bk.danirebollo.es", "A", "38716a2755333f7df161b8be21b810fd", "false")
+            //await setDNS(request, SERVERBKADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME", MAINDNSRECORDID,"true")
+            //disabling redirection
+            await setredirectstatus(request, 0)
+
+            //send telegram notification
+            await sendTelegramMessage(request, "UPDATING BK DNS IP to: " + params.d2 ) //+ "\nDisabling redirection"
+        }
+    }
+    else {
+        resp += "<!DOCTYPE html>\
     <html>\
     <head>\
 <style>\
@@ -291,20 +360,31 @@ async function handleRequest(request) {
     </td>\
   </tr>\
   <tr>\
-    <td>Main DNS content</td>\
-    <td>"+ mainDNScontent + "</td>\
-<td>\
-"+ printcolorcell(DNSisVPS) + "\
-</td>\
-  </tr>\
-  <tr>\
+    <td>Main DNS content</td>"
+    
+resp+="<td>"+ mainDNScontent + "</td>"
+
+resp+="<td>"
+if(VPSENABLED)
+resp+=printcolorcell(DNSisVPS)
+else
+resp+=printcolorcell(1)
+
+
+resp+="</td>\
+  </tr>"
+if(VPSENABLED)
+{
+   resp+="<tr>\
     <td>Main server ping</td>\
     <td>"+ VPSADDRESS + "</td>\
     <td>\
     "+ printcolorcell(pingvpsstatus) + "\
     </td>\
-  </tr>\
-  <tr>\
+  </tr>" 
+}
+
+resp+="<tr>\
     <td>Secundary server ping</td>\
     <td>"+ SERVERBKADDRESSWOSCH + "</td>\
     <td>\
@@ -315,7 +395,7 @@ async function handleRequest(request) {
     <td>Redirect status</td>\
     <td>"+ currentRedirectStatus + "</td>\
     <td>\
-    "+ printcolorcell(currentRedirectStatus) + "\
+    "+ printcolorcell(!currentRedirectStatus) + "\
     </td>\
   </tr>\
   <tr>\
@@ -326,66 +406,64 @@ async function handleRequest(request) {
     </td>\
   </tr>\
 </table>"
+        if ((mainDNScontent == VPSADDRESSWOSCH) && pingvpsstatus)  //pinghoststatus
+        {
+            successmsg += "Server working"
+        }
+        else if ((mainDNScontent != VPSADDRESSWOSCH) && pingvpsstatus)  //pinghoststatus
+        {
+            //set DNS to VPSADDRESS
+            await setDNS(request, VPSADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME", MAINDNSRECORDID, "true")
 
-    alertmsg = ""
-    warningmsg = ""
-    successmsg = ""
-
-    if ((mainDNScontent == VPSADDRESSWOSCH) && pingvpsstatus)  //pinghoststatus
-    {
-        successmsg += "Server working"
-    }
-    else if ((mainDNScontent != VPSADDRESSWOSCH) && pingvpsstatus)  //pinghoststatus
-    {
-        //set DNS to VPSADDRESS
-        await setDNS(request, VPSADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME")
-
-        //disable redirect
-        await setredirectstatus(request, 0)
-
-        //send telegram notification to server bot "RESTORING DNS"
-        await sendTelegramMessage(request, "RESTORING DNS")
-        //verbose
-        successmsg += "Restoring server. <br>Setting DNS to VPSADDRESS<br>-disable redirect<br>-send telegram notification to server bot \"RESTORING DNS\""
-    }
-    else if (SERVERBKADDRESSWOSCH != "" && pingbk2status) {
-        warningmsg += "Service partially degraded.<br>"
-
-        if (currentRedirectStatus) {
-            warningmsg += "Disabling redirect<br>"
             //disable redirect
             await setredirectstatus(request, 0)
-            await sendTelegramMessage(request, "BK2 is UP. Disabling redirect")
-        }
 
-
-        if (mainDNScontent != SERVERBKADDRESSWOSCH) {
-            //set DNS to SERVERBKADDRESS
-            await setDNS(request, SERVERBKADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME")
-
-            //send telegram notification to server bot "VPS DOWN, SETTING BK2"
-            await sendTelegramMessage(request, "VPS DOWN, SETTING BK2")
+            //send telegram notification to server bot "RESTORING DNS"
+            await sendTelegramMessage(request, "RESTORING DNS")
             //verbose
-            warningmsg += "setting DNS to SERVERBKADDRESS<br>sending telegram notification to server bot \"VPS DOWN: SETTING BK2\"<br>"
+            successmsg += "Restoring server. <br>Setting DNS to VPSADDRESS<br>-disable redirect<br>-send telegram notification to server bot \"RESTORING DNS\""
         }
-        else
-            warningmsg += "Setted DNS to SERVERBKADDRESS<br>"
-    }
-    else {
-        alertmsg += "Service totally degraded. "
-        if (!currentRedirectStatus) {
-            //enable redirect
-            await setredirectstatus(request, 1)
+        else if (SERVERBKADDRESSWOSCH != "" && pingbk2status) {
+            if(!VPSENABLED) 
+                successmsg += "Server working"
+            else
+                warningmsg += "Service partially degraded.<br>"
 
-            //send telegram notification to server bot "VPS & BK2 DOWN, SETTING REDIRECT"
-            await sendTelegramMessage(request, "VPS and BK2 DOWN, SETTING REDIRECT")
-            //verbose
-            alertmsg += "<br>Enabling redirection<br>sending telegram notification to server bot \"VPS & BK2 DOWN: SETTING REDIRECT\""
+            if (currentRedirectStatus) {
+                warningmsg += "Disabling redirect<br>"
+                //disable redirect
+                await setredirectstatus(request, 0)
+                await sendTelegramMessage(request, "BK2 is UP. Disabling redirect")
+            }
+
+
+            if (mainDNScontent != SERVERBKADDRESSWOSCH) {
+                //set DNS to SERVERBKADDRESS
+                await setDNS(request, SERVERBKADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME", MAINDNSRECORDID, "true")
+
+                //send telegram notification to server bot "VPS DOWN, SETTING BK2"
+                await sendTelegramMessage(request, "VPS DOWN, SETTING BK2")
+                //verbose
+                warningmsg += "setting DNS to SERVERBKADDRESS<br>sending telegram notification to server bot \"VPS DOWN: SETTING BK2\"<br>"
+            }
+            else
+                warningmsg += "Setted DNS to SERVERBKADDRESS<br>"
         }
-        else
-            alertmsg += "Redirection enabled"
-    }
+        else {
+            alertmsg += "Service totally degraded. "
+            if (!currentRedirectStatus) {
+                //enable redirect
+                await setredirectstatus(request, 1)
 
+                //send telegram notification to server bot "VPS & BK2 DOWN, SETTING REDIRECT"
+                await sendTelegramMessage(request, "VPS and BK2 DOWN, SETTING REDIRECT")
+                //verbose
+                alertmsg += "<br>Enabling redirection<br>sending telegram notification to server bot \"VPS & BK2 DOWN: SETTING REDIRECT\""
+            }
+            else
+                alertmsg += "Redirection enabled"
+        }
+    }
 
     if (successmsg != "") {
         resp += "<div class=\"success\">\
