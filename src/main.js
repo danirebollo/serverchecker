@@ -11,6 +11,7 @@
 //var TELEGRAM_CHATID = // SET ENV VARIABLE
 //var VPSENABLED = // SET ENV VARIABLE
 //var BACKUPDNSRECORDID = // SET ENV VARIABLE
+//var GETSECRETKEY = // SET ENV VARIABLE
 
 var HOSTNAME = "https://" + HOSTNAMEWOSCH
 var VPSADDRESS = "https://" + VPSADDRESSWOSCH
@@ -210,8 +211,26 @@ async function setredirectstatus(request, redirectstatus) {
     }
     //
 }
-
+function sleep(ms) {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms)
+    })
+}
 async function myping(url) {
+    var pingvpsstatus = await myping0(url)
+    console.log("## myping:: '" + url + "' 1st attempt: " + pingvpsstatus)
+    if (!pingvpsstatus) {
+        console.log("## myping:: '" + url + "' first attempt fail. waiting 2s...")
+        await sleep(2000)
+        pingvpsstatus = await myping0(url)
+        console.log("## myping:: '" + url + "' 2nd attempt: " + pingvpsstatus)
+        return pingvpsstatus
+    }
+    else
+        return true
+}
+
+async function myping0(url) {
 
     if (url == "" || url === null || url === "")
         return false
@@ -224,14 +243,14 @@ async function myping(url) {
             fetch(url)
                 .then(() => {
                     console.log("## myping:: resolve true...")
-                    reslove(true)            
-                    })
+                    reslove(true)
+                })
                 .catch(() => {
                     console.log("## myping:: resolve false...")
                     reslove(false)
                 });
             setTimeout(() => {
-            console.log("## myping:: setTimeout...: "+timeout)
+                console.log("## myping:: setTimeout...: " + timeout)
                 reslove(false);
             }, timeout);
         } catch (e) {
@@ -241,24 +260,27 @@ async function myping(url) {
         }
     });
 }
+
 /*
 *
 *
 *
 */
 async function handleRequest(request) {
+    var starttime = Date.now() / 1000
+
     var pingvpsstatus = 0
-    if(VPSENABLED)
-    {
-       console.log("Ping vps...")
-        pingvpsstatus = await myping(VPSADDRESS) 
+    if (VPSENABLED==1 || VPSENABLED=="1") {
+        console.log("VPSENABLED "+VPSENABLED)
+        console.log("Ping vps...")
+        pingvpsstatus = await myping(VPSADDRESS)
     }
-    
+
 
     console.log("Ping hostname...")
     var pinghoststatus = await myping(HOSTNAME)
     console.log("Ping serverbk...")
-    var pingbk2status = await myping(SERVERBKADDRESS+"/check/check.php")
+    var pingbk2status = await myping(SERVERBKADDRESS + "/check/check.php")
     console.log("Ping redirectionurl...")
     var pingredirectstatus = await myping(REDIRECTIONURL)
 
@@ -269,7 +291,7 @@ async function handleRequest(request) {
     console.log("getting hostname dns status...")
 
     var mainDNScontent = await getDNS(request, HOSTNAMEWOSCH, HOSTNAMEWOSCH, "CNAME")
-    
+
     console.log("getting serverbk dns status...")
     var backupDNScontent = await getDNS(request, HOSTNAMEWOSCH, SERVERBKADDRESSWOSCH, "A")
     var DNSisVPS = false
@@ -294,7 +316,7 @@ async function handleRequest(request) {
 
     resp += "<div> " + JSON.stringify(params) + "</div>"
 
-    if (params.d1 === "asdfKkAQfW") {
+    if (params.d1 === GETSECRETKEY) {
         resp += "<div> ##################################################### </div>"
         resp += "<div> current backupdns content: " + backupDNScontent + "</div>"
         resp += "<div> received ip: " + params.d2 + "</div>"
@@ -307,13 +329,13 @@ async function handleRequest(request) {
             //nothing
             //else
             //update backup dns ip
-            await setDNS(request, params.d2, "bk.danirebollo.es", "A", "38716a2755333f7df161b8be21b810fd", "false")
+            await setDNS(request, params.d2, "bk.danirebollo.es", "A", BACKUPDNSRECORDID, "true")
             //await setDNS(request, SERVERBKADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME", MAINDNSRECORDID,"true")
             //disabling redirection
             await setredirectstatus(request, 0)
 
             //send telegram notification
-            await sendTelegramMessage(request, "UPDATING BK DNS IP to: " + params.d2 ) //+ "\nDisabling redirection"
+            await sendTelegramMessage(request, "UPDATING BK DNS IP to: " + params.d2) //+ "\nDisabling redirection"
         }
     }
     else {
@@ -346,7 +368,7 @@ async function handleRequest(request) {
     <body>\
     <h1>Serverchecker</h1>";
 
-    resp += "<table style=\"width:100%\">\
+        resp += "<table style=\"width:100%\">\
   <tr>\
     <th>object</th>\
     <th>detail</th>\
@@ -361,30 +383,29 @@ async function handleRequest(request) {
   </tr>\
   <tr>\
     <td>Main DNS content</td>"
-    
-resp+="<td>"+ mainDNScontent + "</td>"
 
-resp+="<td>"
-if(VPSENABLED)
-resp+=printcolorcell(DNSisVPS)
-else
-resp+=printcolorcell(1)
+        resp += "<td>" + mainDNScontent + "</td>"
+
+        resp += "<td>"
+        if (VPSENABLED)
+            resp += printcolorcell(DNSisVPS)
+        else
+            resp += printcolorcell(1)
 
 
-resp+="</td>\
+        resp += "</td>\
   </tr>"
-if(VPSENABLED)
-{
-   resp+="<tr>\
+        if (VPSENABLED) {
+            resp += "<tr>\
     <td>Main server ping</td>\
     <td>"+ VPSADDRESS + "</td>\
     <td>\
     "+ printcolorcell(pingvpsstatus) + "\
     </td>\
-  </tr>" 
-}
+  </tr>"
+        }
 
-resp+="<tr>\
+        resp += "<tr>\
     <td>Secundary server ping</td>\
     <td>"+ SERVERBKADDRESSWOSCH + "</td>\
     <td>\
@@ -424,7 +445,7 @@ resp+="<tr>\
             successmsg += "Restoring server. <br>Setting DNS to VPSADDRESS<br>-disable redirect<br>-send telegram notification to server bot \"RESTORING DNS\""
         }
         else if (SERVERBKADDRESSWOSCH != "" && pingbk2status) {
-            if(!VPSENABLED) 
+            if (!VPSENABLED)
                 successmsg += "Server working"
             else
                 warningmsg += "Service partially degraded.<br>"
@@ -477,14 +498,12 @@ resp+="<tr>\
         resp += "<div class=\"warning\">\
   "+ warningmsg + "</div>"
     }
-
-    //TODO 
-    //check specific code instead simple PING
-    //send telegram notification to server bot
-
+    var endtime = Date.now() / 1000
+    resp += "<p>Execution time: " + (endtime - starttime).toFixed(2) + " seconds. </p>"
     resp += "</body>\
             </html>";
 
+    console.log("Execution time: " + (endtime - starttime).toFixed(2) + " seconds")
     return new Response(resp, {
         headers: {
             "content-type": "text/html;charset=UTF-8",
@@ -492,4 +511,3 @@ resp+="<tr>\
     })
 
 }
-
