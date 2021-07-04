@@ -12,6 +12,7 @@
 //var VPSENABLED = // SET ENV VARIABLE
 //var BACKUPDNSRECORDID = // SET ENV VARIABLE
 //var GETSECRETKEY = // SET ENV VARIABLE
+//var TELEGRAMAVAILABLE= // SET ENV VARIABLE
 
 var HOSTNAME = "https://" + HOSTNAMEWOSCH
 var VPSADDRESS = "https://" + VPSADDRESSWOSCH
@@ -29,6 +30,8 @@ function printcolorcell(value) {
 }
 
 async function sendTelegramMessage(request, mymessage) {
+    if(TELEGRAMAVAILABLE==1)
+    {  
     const urlvps3 = "https://api.telegram.org/bot" + TELEGRAM_BOTID + "/sendMessage?chat_id=" + TELEGRAM_CHATID + "&text=" + encodeURI(mymessage)
     console.log(urlvps3)
 
@@ -38,8 +41,6 @@ async function sendTelegramMessage(request, mymessage) {
         method: "GET"
     })
     requestvps3.headers.set("Host", "api.telegram.org")
-    //requestvps3.headers.set("X-Auth-Email", XAUTHEMAIL)
-    //requestvps3.headers.set("X-Auth-Key", XAUTHKEY)
 
     originalResponse = await fetch(urlvps3, requestvps3)
         .then((resp) => resp.json())
@@ -49,6 +50,7 @@ async function sendTelegramMessage(request, mymessage) {
         .catch(function (error) {
             return "error"
         });
+    }
     var status = "not found"
 
     return status
