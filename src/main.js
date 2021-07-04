@@ -64,21 +64,20 @@ async function setDNS(request, destiny, name, type, recordid, proxied) {
     const urlvps3 = "https://api.cloudflare.com/client/v4/zones/" + ZONEID + "/dns_records/" + recordid
     var proxied2 = ""
     if (proxied == "true")
-        proxied2 = "\"proxied\": true\","
+        proxied2 = "\"proxied\": true,"
 
     var reqbody3 = "{\"type\":\""+ type + "\",\"name\":\""+ name + "\",\"content\":\""+ destiny + "\","+ proxied2 + "\"ttl\":1}"
 
     let requestvps3 = new Request(urlvps3, {
         body: reqbody3,
         headers: request.headers,
-        method: "PUT",
-        redirect: request.redirect
+        method: 'PUT',
+        redirect: 'follow'
     })
-    requestvps3.headers.set("Host", "api.cloudflare.com")
+    //requestvps3.headers.set("Host", "api.cloudflare.com")
     requestvps3.headers.set("X-Auth-Email", XAUTHEMAIL)
     requestvps3.headers.set("X-Auth-Key", XAUTHKEY)
     requestvps3.headers.set("Content-Type", "application/json")
-    requestvps3.headers.set("Content-Length", "453")
 
     var responsestatus=0
 
@@ -143,6 +142,7 @@ async function getredirectstatus(request) {
     })
     requestvps3.headers.set("Host", "api.cloudflare.com")
     requestvps3.headers.set("X-Auth-Email", XAUTHEMAIL)
+    requestvps3.headers.set("Content-Type", "application/json")
     requestvps3.headers.set("X-Auth-Key", XAUTHKEY)
 
 
@@ -157,12 +157,15 @@ async function getredirectstatus(request) {
     var status = "not found"
     if (originalResponse.result)
         for (var i = 0; i < originalResponse.result.length; i++) {
-            if (originalResponse.result[i].id == REDIRECTIONID) {
+            if (originalResponse.result[i].id == REDIRECTIONID) 
+            {
                 status = originalResponse.result[i].status;
                 if (status == "active")
                     status = true
                 else
                     status = false
+                
+                break;
             }
         }
 
@@ -243,14 +246,52 @@ async function myping0(url) {
     if (url == "" || url === null || url === "")
         return false
 
+    
+const urlRule = new RegExp('(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]');
+        
+        const init = {
+    headers: {
+      //"content-type": "text/html;charset=UTF-8",
+    },
+  }
+
+    var pingstatus=0
+
+    if (!urlRule.test(url)) return false;
+
+    //TODO: OPTIMIZE. 1 fetch instead of 2
+    var promisestatus= await myping1(url);
+    if(promisestatus==true)
+    {
+        //TODO: OPTIMIZE. 1 fetch instead of 2
+        const response4 = await fetch(url) 
+        if(!response4.ok)
+        {
+            debug0+="setting pingstatus to FALSE<br>"
+            promisestatus=false
+        }
+        else
+        {
+            promisestatus=true
+        }
+    }
+    else
+    {
+       promisestatus=false
+    }   
+    return promisestatus;
+}
+
+function myping1(url)
+{
+return new Promise((reslove, reject) => {
+
     timeout = 5000
-    return new Promise((reslove, reject) => {
-        const urlRule = new RegExp('(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]');
-        if (!urlRule.test(url)) reslove(false);  //reject('invalid url');
         try {
+
             fetch(url)
-                .then(() => {
-                    console.log("## myping:: resolve true...")
+            .then(response => response.ok)
+                .then(response => {
                     reslove(true)
                 })
                 .catch(() => {
@@ -260,9 +301,8 @@ async function myping0(url) {
             setTimeout(() => {
                 console.log("## myping:: setTimeout...: " + timeout)
                 reslove(false);
-            }, timeout);
+            }, timeout);          
         } catch (e) {
-            //reject(e);
             console.log("## myping:: Timeout catch...")
             reslove(false);
         }
@@ -409,7 +449,7 @@ async function handleRequest(request) {
 
         resp += "</td>\
   </tr>"
-        if (VPSENABLED) {
+        if (VPSENABLED==1) {
             resp += "<tr>\
     <td>Main server ping</td>\
     <td>"+ VPSADDRESS + "</td>\
