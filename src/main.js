@@ -15,11 +15,11 @@
 //var TUNNELENABLED = // SET ENV VARIABLE
 //var TUNNELADDRESSWOSCH= // SET ENV VARIABLE
 //var TELEGRAMAVAILABLE= // SET ENV VARIABLE
-
 var TUNNELADDRESS = "https://"+TUNNELADDRESSWOSCH
 var HOSTNAME = "https://" + HOSTNAMEWOSCH
 var VPSADDRESS = "https://" + VPSADDRESSWOSCH
 var SERVERBKADDRESS = "https://" + SERVERBKADDRESSWOSCH
+
 var alertDNS=""
 
 //////////////////////////////////////////////////////////////////////
@@ -327,7 +327,12 @@ async function handleRequest(request) {
     console.log("Ping hostname...")
     var pinghoststatus = await myping(HOSTNAME)
     console.log("Ping serverbk...")
-    var pingbk2status = await myping(SERVERBKADDRESS + "/check/check.php")
+    var pingbk2status = 0
+    if(ENABLEHTTPACCESS==1)
+    {
+        pingbk2status = await myping(SERVERBKADDRESS + "/check/check.php")
+    }
+
     var pingtunnelstatus=0
     if(TUNNELENABLED==1)
     {
@@ -469,14 +474,18 @@ async function handleRequest(request) {
   </tr>"
         }
 
+        if(ENABLEHTTPACCESS==1)
+        {   
         resp += "<tr>\
     <td>Secundary server ping</td>\
     <td>"+ SERVERBKADDRESSWOSCH + "</td>\
     <td>\
     "+ printcolorcell(pingbk2status) + "\
     </td>\
-  </tr>\
-  <tr>\
+  </tr>"
+        }
+
+    resp += "<tr>\
     <td>Redirect status</td>\
     <td>"+ currentRedirectStatus + "</td>\
     <td>\
@@ -495,7 +504,7 @@ async function handleRequest(request) {
         {
             successmsg += "Server working"
         }
-        else if ((mainDNScontent != VPSADDRESSWOSCH) && pingvpsstatus)  //pinghoststatus
+        else if ((mainDNScontent != VPSADDRESSWOSCH) && pingvpsstatus && ENABLEHTTPACCESS ==1)  //pinghoststatus
         {
             //set DNS to VPSADDRESS
             await setDNS(request, VPSADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME", MAINDNSRECORDID, "true")
@@ -530,7 +539,7 @@ async function handleRequest(request) {
             else
                 warningmsg += "Setted DNS to TUNNEL<br>"
         }
-        else if (SERVERBKADDRESSWOSCH != "" && pingbk2status) {
+        else if (SERVERBKADDRESSWOSCH != "" && pingbk2status && ENABLEHTTPACCESS ==1) {
             if (!VPSENABLED)
                 successmsg += "Server working"
             else
