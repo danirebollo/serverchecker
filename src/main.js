@@ -12,8 +12,11 @@
 //var VPSENABLED = // SET ENV VARIABLE
 //var BACKUPDNSRECORDID = // SET ENV VARIABLE
 //var GETSECRETKEY = // SET ENV VARIABLE
+//var TUNNELENABLED = // SET ENV VARIABLE
+//var TUNNELADDRESSWOSCH= // SET ENV VARIABLE
 //var TELEGRAMAVAILABLE= // SET ENV VARIABLE
 
+var TUNNELADDRESS = "https://"+TUNNELADDRESSWOSCH
 var HOSTNAME = "https://" + HOSTNAMEWOSCH
 var VPSADDRESS = "https://" + VPSADDRESSWOSCH
 var SERVERBKADDRESS = "https://" + SERVERBKADDRESSWOSCH
@@ -291,11 +294,18 @@ async function handleRequest(request) {
         pingvpsstatus = await myping(VPSADDRESS)
     }
 
-
     console.log("Ping hostname...")
     var pinghoststatus = await myping(HOSTNAME)
     console.log("Ping serverbk...")
     var pingbk2status = await myping(SERVERBKADDRESS + "/check/check.php")
+    var pingtunnelstatus=0
+    if(TUNNELENABLED==1)
+    {
+       console.log("Ping tunnel...")
+       pingtunnelstatus = await myping(TUNNELADDRESS+ "/rt/check.html")
+    } 
+    
+
     console.log("Ping redirectionurl...")
     var pingredirectstatus = await myping(REDIRECTIONURL)
 
@@ -419,6 +429,16 @@ async function handleRequest(request) {
     </td>\
   </tr>"
         }
+        if (TUNNELENABLED==1) 
+        {
+            resp += "<tr>\
+    <td>Tunnel ping</td>\
+    <td>"+ TUNNELADDRESS + "</td>\
+    <td>\
+    "+ printcolorcell(pingtunnelstatus) + "\
+    </td>\
+  </tr>"
+        }
 
         resp += "<tr>\
     <td>Secundary server ping</td>\
@@ -458,6 +478,28 @@ async function handleRequest(request) {
             await sendTelegramMessage(request, "RESTORING DNS")
             //verbose
             successmsg += "Restoring server. <br>Setting DNS to VPSADDRESS<br>-disable redirect<br>-send telegram notification to server bot \"RESTORING DNS\""
+        }
+        else if (TUNNELENABLED==1 && pingtunnelstatus) {
+                successmsg += "Tunnel working"
+
+            if (currentRedirectStatus) {
+                warningmsg += "Disabling redirect<br>"
+                //disable redirect
+                await setredirectstatus(request, 0)
+                await sendTelegramMessage(request, "TUNNEL is UP. Disabling redirect")
+            }
+
+            if (mainDNScontent != TUNNELADDRESSWOSCH) {
+                //set DNS to TUNNELADDRESSWOSCH
+                await setDNS(request, TUNNELADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME", MAINDNSRECORDID, "true")
+
+                //send telegram notification to server bot "VPS DOWN, SETTING BK2"
+                await sendTelegramMessage(request, "SETTING DNS TO TUNNEL")
+                //verbose
+                warningmsg += "setting DNS to TUNNEL<br>sending telegram notification to server bot \"VPS DOWN: SETTING TUNNEL\"<br>"
+            }
+            else
+                warningmsg += "Setted DNS to TUNNEL<br>"
         }
         else if (SERVERBKADDRESSWOSCH != "" && pingbk2status) {
             if (!VPSENABLED)
