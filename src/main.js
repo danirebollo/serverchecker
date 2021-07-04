@@ -17,6 +17,7 @@
 var HOSTNAME = "https://" + HOSTNAMEWOSCH
 var VPSADDRESS = "https://" + VPSADDRESSWOSCH
 var SERVERBKADDRESS = "https://" + SERVERBKADDRESSWOSCH
+var alertDNS=""
 
 //////////////////////////////////////////////////////////////////////
 addEventListener('fetch', event => {
@@ -82,14 +83,26 @@ async function setDNS(request, destiny, name, type, recordid, proxied) {
     requestvps3.headers.set("Content-Type", "application/json")
     requestvps3.headers.set("Content-Length", "453")
 
+    var responsestatus=0
     const responsevps3 = new Response()
     try {
         const originalResponse = await fetch(urlvps3, requestvps3)
         console.log("CONSOLE: " + JSON.stringify(originalResponse))
-        pingvps3 = true
+        responsestatus=originalResponse.status     
     }
     catch (e) {
     }
+
+    if(responsestatus!=200)
+    {
+        alertDNS="ERROR SETTING DNS (destiny: '"+destiny+"', name:'"+name+"', type:'"+type+"', proxied:'"+proxied+"'). ENABLING REDIRECT"
+
+        //send telegram notification to server bot "ERROR SETTING DNS"
+        await sendTelegramMessage(request, "ERROR SETTING DNS. ENABLING REDIRECT")
+        await setredirectstatus(request, 1)
+        return false
+    }
+    return true
 }
 
 async function getDNS(request, zonename, name, type) {
@@ -269,7 +282,7 @@ async function myping0(url) {
 *
 */
 async function handleRequest(request) {
-    var starttime = Date.now() / 1000
+    alertDNS=""
 
     var pingvpsstatus = 0
     if (VPSENABLED==1 || VPSENABLED=="1") {
@@ -496,6 +509,11 @@ async function handleRequest(request) {
         resp += "<div class=\"alert\">\
   "+ alertmsg + "</div>"
     }
+    if (alertDNS != "") {
+        resp += "<div class=\"alert\">\
+  "+ alertDNS + "</div>"
+    }
+
     if (warningmsg != "") {
         resp += "<div class=\"warning\">\
   "+ warningmsg + "</div>"
