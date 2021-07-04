@@ -66,14 +66,8 @@ async function setDNS(request, destiny, name, type, recordid, proxied) {
     if (proxied == "true")
         proxied2 = "\"proxied\": true\","
 
-    var reqbody3 = "{\
-    \"type\": \""+ type + "\",\
-    \"name\": \""+ name + "\",\
-    \"content\": \""+ destiny + "\",\
-    "+ proxied2 + "\"ttl\": 1\
-}"
+    var reqbody3 = "{\"type\":\""+ type + "\",\"name\":\""+ name + "\",\"content\":\""+ destiny + "\","+ proxied2 + "\"ttl\":1}"
 
-    var pingvps3 = false
     let requestvps3 = new Request(urlvps3, {
         body: reqbody3,
         headers: request.headers,
@@ -87,6 +81,7 @@ async function setDNS(request, destiny, name, type, recordid, proxied) {
     requestvps3.headers.set("Content-Length", "453")
 
     var responsestatus=0
+
     const responsevps3 = new Response()
     try {
         const originalResponse = await fetch(urlvps3, requestvps3)
@@ -111,7 +106,6 @@ async function setDNS(request, destiny, name, type, recordid, proxied) {
 async function getDNS(request, zonename, name, type) {
     const urlvps3 = "https://api.cloudflare.com/client/v4/zones/" + ZONEID + "/dns_records"
 
-    var pingvps3 = false
     let requestvps3 = new Request(urlvps3, {
         headers: request.headers,
         method: "GET"
@@ -143,7 +137,6 @@ async function getDNS(request, zonename, name, type) {
 async function getredirectstatus(request) {
     const urlvps3 = "https://api.cloudflare.com/client/v4/zones/" + ZONEID + "/pagerules"
 
-    var pingvps3 = false
     let requestvps3 = new Request(urlvps3, {
         headers: request.headers,
         method: "GET"
@@ -207,7 +200,6 @@ async function setredirectstatus(request, redirectstatus) {
     \"status\": \""+ redirectstatus + "\"\
 }"
 
-    var pingvps3 = false
     let requestvps3 = new Request(urlvps3, {
         body: reqbody3,
         headers: request.headers,
@@ -218,12 +210,10 @@ async function setredirectstatus(request, redirectstatus) {
     requestvps3.headers.set("X-Auth-Email", XAUTHEMAIL)
     requestvps3.headers.set("X-Auth-Key", XAUTHKEY)
     requestvps3.headers.set("Content-Type", "application/json")
-    //requestvps3.headers.set("Content-Length", "453")
 
     const responsevps3 = new Response()
     try {
         const originalResponse = await fetch(urlvps3, requestvps3)
-        pingvps3 = true
     }
     catch (e) {
     }
@@ -351,13 +341,12 @@ async function handleRequest(request) {
         //if backupdns==ddnsip
         {
             resp += "<div> updating DNS to: " + params.d2 + "</div>"
-            //nothing
-            //else
+            
             //update backup dns ip
-            await setDNS(request, params.d2, "bk.danirebollo.es", "A", BACKUPDNSRECORDID, "true")
-            //await setDNS(request, SERVERBKADDRESSWOSCH, HOSTNAMEWOSCH, "CNAME", MAINDNSRECORDID,"true")
+            await setDNS(request, params.d2, SERVERBKADDRESSWOSCH, "A", BACKUPDNSRECORDID, "true")
+            
             //disabling redirection
-            await setredirectstatus(request, 0)
+            //await setredirectstatus(request, 0)
 
             //send telegram notification
             await sendTelegramMessage(request, "UPDATING BK DNS IP to: " + params.d2) //+ "\nDisabling redirection"
