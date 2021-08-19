@@ -118,7 +118,9 @@ Test:
 ```
 $ ./ddnsscript.sh
 ```
-Add to cron using ssh
+Add to cron:
+
+A- using ssh
 ```
 $ crontab -e 
 ```
@@ -127,7 +129,7 @@ Crontab content:
 */5 * * * * /bin/sh /root/ddnsscript.sh
 ```
 
-Add to cron using OpenWrt Scheduled tasks menu
+B- Using OpenWrt Scheduled tasks menu
 ```
 */5 * * * * /bin/sh /root/ddnsscript.sh
 ```
