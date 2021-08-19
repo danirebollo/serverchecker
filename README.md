@@ -3,6 +3,7 @@ Server status tracker using free Cloudflare Workers service: status.danirebollo.
 
 The goal of this project is to have an high availability web service with cheap resources like OVH VPS, free Cloudflare plan and home server or redirect page like personal github profile (if web is not available, better to be redirected than get DNS error...). 
 
+Also use our OpenWRT router or Windows server to act as a DDNS client service using Cloudflare API (our worker will do the job).
 # Setup
 ## create telegram bot
 Use botfather to create telegram bot.
@@ -57,6 +58,7 @@ To get this key, go to cloudflare "profile/api tokens" and get "global API key" 
 ### TELEGRAM_BOTID
 
 ### TELEGRAM_CHATID
+
 ## cloudflare setup
 
 1- Go to https://dash.cloudflare.com/
@@ -89,23 +91,92 @@ ZONEID                  // example: f79ddda8dd00f322a7dca89b8c869a9c
 9-  Add cron activator (cloudflare/workers/cron activator): 
 */30 * * * *
 
+## cloudflare tunnel
+TODO documentation
+
+# DDNS client
+## Using OpenWRT
+OpenWrt has the WAN IP we're looking for, so we can use directly.
+
+Create ddnsscript.sh
+```
+$ vi ddnsscript.sh
+```
+ddnsscript.sh content:
+```
+#!/bin/sh
+ip=`ubus call network.interface.wan status | grep \"address\" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}';`
+wget -qO- 'https://serverchecker.danirebollo.workers.dev/?d1=GETSECRETKEY&d2='$ip;
+```
+Get GETSECRETKEY from cloudflare worker environment variable.
+
+Add execution rights:
+```
+$ chmod +x ddnsscript.sh
+```
+Test: 
+```
+$ ./ddnsscript.sh
+```
+Add to cron using ssh
+```
+$ crontab -e 
+```
+Crontab content:
+```
+*/5 * * * * /bin/sh /root/ddnsscript.sh
+```
+
+Add to cron using OpenWrt Scheduled tasks menu
+```
+*/5 * * * * /bin/sh /root/ddnsscript.sh
+```
+
+Enable cron (Cron is not enabled by default, so your jobs won't be run)
+```
+$ /etc/init.d/cron enable
+$ /etc/init.d/cron reload
+```
+## Using windows
+Windows doesn't have the WAN IP we want, so we need to use some external service to get it. In this example: https://ipecho.net/plain
+
+Create a task in windows task scheduler witch calls the following:
+```
+php.exe -f C:\cron.php
+```
+cron.php content:
+```
+<?php
+
+print("Running php script...");
+
+$realIP = file_get_contents("https://ipecho.net/plain");
+
+$response = file_get_contents("https://serverchecker.danirebollo.workers.dev/?d1=GETSECRETKEY&d2=".$realIP);
+print("\nReal IP: ".$realIP."\nResponse:\n");
+if ( php_sapi_name() != 'cli' )
+    echo "<br>Real IP: ".$realIP."<br>Response:<br>".$response;
+
+$replacetospace=array("<body>","<html>","<div>");
+$response =str_replace($replacetospace,"",$response);
+$replacetonewline=array("</body>","</html>","</div>","<br>");
+$response =str_replace($replacetonewline,"\n",$response);
+
+if ( php_sapi_name() == 'cli' )
+    print($response);
+
+```
+Get GETSECRETKEY from cloudflare worker environment variable.
 
 # TODO
-telegram/js: send telegram notification to server bot
-
-js: check for specific code instead simple PING?
-
 js: check if enviroment variables are empty.. show message...
-
-js: add bootstrap design
 
 js: require GET value to see sensible data (redirect url, server1/2 DNS...)
 
-sh/cmd: create script to get parameters (instead using postman collection...) or do it with worker.
+sh/cmd: create script to get Cloudflare parameters (instead using postman collection...) or do it with worker.
 # Bugs
 
 # Docs
 https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
 
 https://support.cloudflare.com/hc/en-us/articles/115002323852-Using-Cloudflare-API-with-Postman-Collections
-
